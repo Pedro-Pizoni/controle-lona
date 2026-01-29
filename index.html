@@ -1,48 +1,70 @@
-v<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Controle de Lonas</title>
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <title>Controle da Lona</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .box {
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 10px;
+      text-align: center;
+      width: 280px;
+    }
+    button {
+      width: 100%;
+      padding: 15px;
+      margin: 10px 0;
+      font-size: 18px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .subir { background: #2ecc71; }
+    .descer { background: #3498db; }
+    .parar { background: #e74c3c; }
+  </style>
 </head>
 <body>
 
-  <h2>Controle de Lonas - Aviário</h2>
+<div class="box">
+  <h2>Controle da Lona</h2>
+  <button class="subir" onclick="enviar('subir')">⬆ Subir</button>
+  <button class="descer" onclick="enviar('descer')">⬇ Descer</button>
+  <button class="parar" onclick="enviar('parar')">⏹ Parar</button>
+</div>
 
-  <button onclick="enviar('SUBIR')">⬆️ SUBIR</button>
-  <button onclick="enviar('DESCER')">⬇️ DESCER</button>
-  <button onclick="enviar('PARAR')">⏹ PARAR</button>
+<script>
+  const API_URL = "https://api-lonasapi-lonas.pepedrdroo22.workers.dev/";
 
-  <p id="status">Status: desconectado</p>
-
-  <script>
-    const host = "wss://8f0ac621d63a4816bbbc077a0be45d7d.s1.eu.hivemq.cloud:8884/mqtt";
-
-    const options = {
-      username: "hivemq.webclient.1769664509081",
-      password: "Wv7.2Ap%Xa10S$PwbO,f",
-      clean: true,
-      connectTimeout: 4000
-    };
-
-    const client = mqtt.connect(host, options);
-
-    client.on("connect", () => {
-      document.getElementById("status").innerText = "Status: conectado";
+  function enviar(acao) {
+    fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ acao })
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log(data);
+    })
+    .catch(err => {
+      alert("Erro ao enviar comando");
+      console.error(err);
     });
-
-    client.on("error", (err) => {
-      document.getElementById("status").innerText = "Erro: " + err;
-    });
-
-    function enviar(comando) {
-      client.publish(
-        "aviario/1/lona/comando",
-        comando
-      );
-      console.log("Enviado:", comando);
-    }
-  </script>
+  }
+</script>
 
 </body>
 </html>
