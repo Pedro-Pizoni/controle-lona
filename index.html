@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Controle da Lona</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -13,65 +14,93 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
+      margin: 0;
     }
+
     .box {
       background: #1e1e1e;
       padding: 30px;
-      border-radius: 10px;
+      border-radius: 12px;
       text-align: center;
       width: 280px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.6);
     }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
     button {
       width: 100%;
       padding: 15px;
       margin: 10px 0;
       font-size: 18px;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
+      color: #fff;
     }
+
     .subir { background: #2ecc71; }
     .descer { background: #3498db; }
     .parar { background: #e74c3c; }
+
+    button:active {
+      opacity: 0.8;
+    }
   </style>
 </head>
+
 <body>
 
-<div class="box">
-  <h2>Controle da Lona</h2>
-  <button class="subir" onclick="enviar('subir')">⬆ Subir</button>
-  <button class="descer" onclick="enviar('descer')">⬇ Descer</button>
-  <button class="parar" onclick="enviar('parar')">⏹ Parar</button>
-</div>
+  <div class="box">
+    <h2>Controle da Lona</h2>
 
-<script>
-  const API_URL = "https://api-lonasapi-lonas.pepedrdroo22.workers.dev/";
-  const API_KEY = "SUA_API_KEY_AQUI"; // 👈 mesma do Cloudflare
+    <button class="subir" onclick="enviar('subir')">
+      ⬆ Subir
+    </button>
 
-  function enviar(acao) {
-    fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-KEY": API_KEY
-      },
-      body: JSON.stringify({ acao })
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Erro HTTP");
-      return res.json();
-    })
-    .then(data => {
-      console.log(data);
-      alert("Comando enviado: " + acao);
-    })
-    .catch(err => {
-      alert("Erro ao enviar comando");
-      console.error(err);
-    });
-  }
-</script>
+    <button class="descer" onclick="enviar('descer')">
+      ⬇ Descer
+    </button>
+
+    <button class="parar" onclick="enviar('parar')">
+      ⏹ Parar
+    </button>
+  </div>
+
+  <script>
+    // 🔗 URL do Cloudflare Worker
+    const API_URL = "https://api-lonasapi-lonas.pepedrdroo22.workers.dev/";
+
+    // 🔐 MESMA chave configurada no Cloudflare (API_KEY)
+    const API_KEY = "SUA_API_KEY_AQUI";
+
+    function enviar(acao) {
+      fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-KEY": API_KEY
+        },
+        body: JSON.stringify({ acao })
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error("Erro HTTP: " + res.status);
+        }
+        return res.json();
+      })
+      .then(data => {
+        console.log(data);
+        alert("Comando enviado: " + acao);
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Erro ao enviar comando");
+      });
+    }
+  </script>
 
 </body>
 </html>
-
