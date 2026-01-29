@@ -46,18 +46,24 @@
 
 <script>
   const API_URL = "https://api-lonasapi-lonas.pepedrdroo22.workers.dev/";
+  const API_KEY = "SUA_API_KEY_AQUI"; // 👈 mesma do Cloudflare
 
   function enviar(acao) {
     fetch(API_URL, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-API-KEY": API_KEY
       },
       body: JSON.stringify({ acao })
     })
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error("Erro HTTP");
+      return res.json();
+    })
     .then(data => {
       console.log(data);
+      alert("Comando enviado: " + acao);
     })
     .catch(err => {
       alert("Erro ao enviar comando");
@@ -68,3 +74,4 @@
 
 </body>
 </html>
+
