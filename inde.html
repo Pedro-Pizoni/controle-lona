@@ -1,0 +1,48 @@
+v<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Controle de Lonas</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+
+  <h2>Controle de Lonas - Aviário</h2>
+
+  <button onclick="enviar('SUBIR')">⬆️ SUBIR</button>
+  <button onclick="enviar('DESCER')">⬇️ DESCER</button>
+  <button onclick="enviar('PARAR')">⏹ PARAR</button>
+
+  <p id="status">Status: desconectado</p>
+
+  <script>
+    const host = "wss://8f0ac621d63a4816bbbc077a0be45d7d.s1.eu.hivemq.cloud:8884/mqtt";
+
+    const options = {
+      username: "hivemq.webclient.1769664509081",
+      password: "Wv7.2Ap%Xa10S$PwbO,f",
+      clean: true,
+      connectTimeout: 4000
+    };
+
+    const client = mqtt.connect(host, options);
+
+    client.on("connect", () => {
+      document.getElementById("status").innerText = "Status: conectado";
+    });
+
+    client.on("error", (err) => {
+      document.getElementById("status").innerText = "Erro: " + err;
+    });
+
+    function enviar(comando) {
+      client.publish(
+        "aviario/1/lona/comando",
+        comando
+      );
+      console.log("Enviado:", comando);
+    }
+  </script>
+
+</body>
+</html>
