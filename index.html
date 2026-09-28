@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -102,6 +101,10 @@
       cursor: not-allowed;
     }
 
+    .posicao:disabled {
+      pointer-events: none;
+    }
+
     .status-box {
       padding: 15px;
       background: #151515;
@@ -195,33 +198,23 @@
         Estado atual
       </div>
 
-      <div
-        id="status"
-        class="status parada"
-      >
+      <div id="status" class="status parada">
         PARADA
       </div>
 
     </div>
 
-    <div
-      id="conexao"
-      class="conexao"
-    >
+    <div id="conexao" class="conexao">
       🟡 Conectando...
     </div>
 
-    <div
-      id="bloqueio"
-      class="bloqueio"
-    ></div>
+    <div id="bloqueio" class="bloqueio"></div>
 
   </div>
 
   <script>
 
     let estadoAtual = "parada";
-
     let ultimoComando = 0;
 
     const intervaloComando = 2000;
@@ -241,30 +234,75 @@
 
     client.on("connect", () => {
 
-      console.log("Conectado ao HiveMQ");
+      console.log("✅ MQTT conectado");
 
-      statusConexao.textContent = "🟢 Conectado";
-      statusConexao.style.color = "#2ecc71";
+      statusConexao.textContent =
+        "🟢 Conectado ao HiveMQ";
 
+      statusConexao.style.color =
+        "#2ecc71";
+
+      atualizarInterface();
     });
 
     client.on("reconnect", () => {
 
-      statusConexao.textContent = "🟡 Reconectando...";
-      statusConexao.style.color = "#f1c40f";
+      console.log("🟡 MQTT reconectando");
 
+      statusConexao.textContent =
+        "🟡 Reconectando...";
+
+      statusConexao.style.color =
+        "#f1c40f";
+
+      atualizarInterface();
+    });
+
+    client.on("close", () => {
+
+      console.log("🔴 MQTT conexão fechada");
+
+      statusConexao.textContent =
+        "🔴 Desconectado";
+
+      statusConexao.style.color =
+        "#e74c3c";
+
+      atualizarInterface();
+    });
+
+    client.on("offline", () => {
+
+      console.log("🟠 MQTT offline");
+
+      statusConexao.textContent =
+        "🟠 Offline";
+
+      statusConexao.style.color =
+        "#e67e22";
+
+      atualizarInterface();
     });
 
     client.on("error", err => {
 
-      console.error("Erro MQTT:", err);
+      console.error("❌ MQTT erro:", err);
 
-      statusConexao.textContent = "🔴 Erro de conexão";
-      statusConexao.style.color = "#e74c3c";
+      statusConexao.textContent =
+        "🔴 Erro MQTT";
 
+      statusConexao.style.color =
+        "#e74c3c";
+
+      atualizarInterface();
     });
 
     function selecionarEstado(novoEstado) {
+
+      if (!client.connected) {
+        alert("O sistema ainda não está conectado ao HiveMQ.");
+        return;
+      }
 
       if (novoEstado === estadoAtual) {
         return;
@@ -292,25 +330,20 @@
           agora - ultimoComando <
           intervaloComando
         ) {
-
           mostrarTempoRestante();
           return;
-
         }
 
       }
 
-      if (!client.connected) {
-
-        alert("Ainda não conectado ao servidor.");
-        return;
-
-      }
+      const acao = converterComando(novoEstado);
 
       const payload = JSON.stringify({
-        acao: converterComando(novoEstado),
+        acao: acao,
         timestamp: Date.now()
       });
+
+      bloquearInterface(true);
 
       client.publish(
         "lona/controle",
@@ -320,31 +353,38 @@
         },
         err => {
 
+          bloquearInterface(false);
+
           if (err) {
 
             console.error(
-              "Erro ao enviar comando:",
+              "❌ Erro ao publicar:",
               err
             );
 
-            return;
+            statusConexao.textContent =
+              "🔴 Falha ao enviar comando";
 
+            statusConexao.style.color =
+              "#e74c3c";
+
+            return;
           }
 
           console.log(
-            "Comando enviado:",
-            novoEstado
+            "✅ Comando enviado:",
+            acao
           );
 
+          if (novoEstado !== "parada") {
+            ultimoComando = Date.now();
+          }
+
+          estadoAtual = novoEstado;
+
+          atualizarInterface();
         }
       );
-
-      ultimoComando = agora;
-
-      estadoAtual = novoEstado;
-
-      atualizarInterface();
-
     }
 
     function converterComando(estado) {
@@ -358,7 +398,6 @@
       }
 
       return "parar";
-
     }
 
     function atualizarInterface() {
@@ -375,9 +414,21 @@
       const status =
         document.getElementById("status");
 
+      const conectado =
+        client.connected;
+
       btnSubir.className = "posicao";
       btnParar.className = "posicao";
       btnDescer.className = "posicao";
+
+      if (!conectado) {
+
+        btnSubir.classList.add("bloqueada");
+        btnParar.classList.add("bloqueada");
+        btnDescer.classList.add("bloqueada");
+
+        return;
+      }
 
       if (estadoAtual === "parada") {
 
@@ -387,7 +438,6 @@
 
         status.textContent = "PARADA";
         status.className = "status parada";
-
       }
 
       if (estadoAtual === "subindo") {
@@ -398,7 +448,6 @@
 
         status.textContent = "SUBINDO";
         status.className = "status subindo";
-
       }
 
       if (estadoAtual === "descendo") {
@@ -409,9 +458,14 @@
 
         status.textContent = "DESCENDO";
         status.className = "status descendo";
-
       }
+    }
 
+    function bloquearInterface(bloquear) {
+
+      document.getElementById("btnSubir").disabled = bloquear;
+      document.getElementById("btnParar").disabled = bloquear;
+      document.getElementById("btnDescer").disabled = bloquear;
     }
 
     function mostrarTempoRestante() {
@@ -430,7 +484,6 @@
           bloqueio.textContent = "";
 
           return;
-
         }
 
         bloqueio.textContent =
@@ -438,15 +491,10 @@
           (restante / 1000).toFixed(1) +
           " s";
 
-        setTimeout(
-          atualizar,
-          100
-        );
-
+        setTimeout(atualizar, 100);
       }
 
       atualizar();
-
     }
 
     atualizarInterface();
@@ -455,4 +503,3 @@
 
 </body>
 </html>
-```
