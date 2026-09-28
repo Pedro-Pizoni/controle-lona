@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -8,6 +9,11 @@
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
   <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: Arial, sans-serif;
       background: #111;
@@ -15,73 +21,211 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      min-height: 100vh;
       margin: 0;
     }
 
     .box {
       background: #1e1e1e;
       padding: 30px;
-      border-radius: 12px;
+      border-radius: 18px;
       text-align: center;
-      width: 280px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.6);
+      width: 340px;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
     }
 
     h2 {
-      margin-bottom: 20px;
+      margin-top: 0;
+      margin-bottom: 8px;
     }
 
-    button {
-      width: 100%;
-      padding: 15px;
-      margin: 10px 0;
-      font-size: 18px;
+    .descricao {
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 25px;
+    }
+
+    .chave {
+      width: 290px;
+      height: 90px;
+      margin: 0 auto 25px auto;
+      padding: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 50px;
+      box-shadow:
+        inset 0 0 12px rgba(0, 0, 0, 0.8),
+        0 5px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    .posicao {
+      width: 86px;
+      height: 76px;
       border: none;
-      border-radius: 8px;
+      border-radius: 40px;
+      background: transparent;
+      color: #666;
       cursor: pointer;
-      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      transition: all 0.2s ease;
     }
 
-    .subir { background: #2ecc71; }
-    .descer { background: #3498db; }
-    .parar { background: #e74c3c; }
+    .posicao .icone {
+      display: block;
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
 
-    button:active {
-      opacity: 0.8;
+    .posicao.ativa {
+      color: #fff;
+      background: #292929;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.08);
+      cursor: default;
+    }
+
+    .posicao.disponivel {
+      color: #ddd;
+    }
+
+    .posicao.disponivel:hover {
+      background: #222;
+      transform: scale(1.03);
+    }
+
+    .posicao.bloqueada {
+      color: #333;
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .status-box {
+      padding: 15px;
+      background: #151515;
+      border-radius: 12px;
+      border: 1px solid #292929;
+    }
+
+    .status-titulo {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 6px;
     }
 
     .status {
-      margin-top: 15px;
-      font-size: 14px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .status.parada {
+      color: #f1c40f;
+    }
+
+    .status.subindo {
+      color: #2ecc71;
+    }
+
+    .status.descendo {
+      color: #3498db;
+    }
+
+    .conexao {
+      margin-top: 18px;
+      font-size: 13px;
       color: #aaa;
     }
+
+    .bloqueio {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #777;
+      min-height: 16px;
+    }
+
   </style>
 </head>
 
 <body>
 
   <div class="box">
+
     <h2>Controle da Lona</h2>
 
-    <button class="subir" onclick="enviar('subir')">
-      ⬆ Subir
-    </button>
-
-    <button class="descer" onclick="enviar('descer')">
-      ⬇ Descer
-    </button>
-
-    <button class="parar" onclick="enviar('parar')">
-      ⏹ Parar
-    </button>
-
-    <div id="status" class="status">
-      Conectando...
+    <div class="descricao">
+      Selecione o próximo estado
     </div>
+
+    <div class="chave">
+
+      <button
+        id="btnSubir"
+        class="posicao"
+        onclick="selecionarEstado('subindo')"
+      >
+        <span class="icone">▲</span>
+        SUBIR
+      </button>
+
+      <button
+        id="btnParar"
+        class="posicao"
+        onclick="selecionarEstado('parada')"
+      >
+        <span class="icone">■</span>
+        PARAR
+      </button>
+
+      <button
+        id="btnDescer"
+        class="posicao"
+        onclick="selecionarEstado('descendo')"
+      >
+        <span class="icone">▼</span>
+        DESCER
+      </button>
+
+    </div>
+
+    <div class="status-box">
+
+      <div class="status-titulo">
+        Estado atual
+      </div>
+
+      <div
+        id="status"
+        class="status parada"
+      >
+        PARADA
+      </div>
+
+    </div>
+
+    <div
+      id="conexao"
+      class="conexao"
+    >
+      🟡 Conectando...
+    </div>
+
+    <div
+      id="bloqueio"
+      class="bloqueio"
+    ></div>
+
   </div>
 
   <script>
+
+    let estadoAtual = "parada";
+
+    let ultimoComando = 0;
+
+    const intervaloComando = 2000;
+
     const client = mqtt.connect(
       "wss://8f0ac621d63a4816bbbc077a0be45d7d.s1.eu.hivemq.cloud:8884/mqtt",
       {
@@ -92,42 +236,223 @@
       }
     );
 
-    const statusEl = document.getElementById("status");
+    const statusConexao =
+      document.getElementById("conexao");
 
     client.on("connect", () => {
+
       console.log("Conectado ao HiveMQ");
-      statusEl.textContent = "🟢 Conectado";
-      statusEl.style.color = "#2ecc71";
+
+      statusConexao.textContent = "🟢 Conectado";
+      statusConexao.style.color = "#2ecc71";
+
     });
 
     client.on("reconnect", () => {
-      statusEl.textContent = "🟡 Reconectando...";
-      statusEl.style.color = "#f1c40f";
+
+      statusConexao.textContent = "🟡 Reconectando...";
+      statusConexao.style.color = "#f1c40f";
+
     });
 
     client.on("error", err => {
+
       console.error("Erro MQTT:", err);
-      statusEl.textContent = "🔴 Erro de conexão";
-      statusEl.style.color = "#e74c3c";
+
+      statusConexao.textContent = "🔴 Erro de conexão";
+      statusConexao.style.color = "#e74c3c";
+
     });
 
-    function enviar(acao) {
+    function selecionarEstado(novoEstado) {
 
-      if (!client.connected) {
-        alert("Ainda não conectado ao servidor.");
+      if (novoEstado === estadoAtual) {
         return;
       }
 
+      if (
+        estadoAtual === "subindo" &&
+        novoEstado !== "parada"
+      ) {
+        return;
+      }
+
+      if (
+        estadoAtual === "descendo" &&
+        novoEstado !== "parada"
+      ) {
+        return;
+      }
+
+      const agora = Date.now();
+
+      if (novoEstado !== "parada") {
+
+        if (
+          agora - ultimoComando <
+          intervaloComando
+        ) {
+
+          mostrarTempoRestante();
+          return;
+
+        }
+
+      }
+
+      if (!client.connected) {
+
+        alert("Ainda não conectado ao servidor.");
+        return;
+
+      }
+
       const payload = JSON.stringify({
-        acao,
+        acao: converterComando(novoEstado),
         timestamp: Date.now()
       });
 
-      client.publish("lona/controle", payload, { qos: 1 });
+      client.publish(
+        "lona/controle",
+        payload,
+        {
+          qos: 1
+        },
+        err => {
 
-      console.log("Comando enviado:", acao);
+          if (err) {
+
+            console.error(
+              "Erro ao enviar comando:",
+              err
+            );
+
+            return;
+
+          }
+
+          console.log(
+            "Comando enviado:",
+            novoEstado
+          );
+
+        }
+      );
+
+      ultimoComando = agora;
+
+      estadoAtual = novoEstado;
+
+      atualizarInterface();
+
     }
+
+    function converterComando(estado) {
+
+      if (estado === "subindo") {
+        return "subir";
+      }
+
+      if (estado === "descendo") {
+        return "descer";
+      }
+
+      return "parar";
+
+    }
+
+    function atualizarInterface() {
+
+      const btnSubir =
+        document.getElementById("btnSubir");
+
+      const btnParar =
+        document.getElementById("btnParar");
+
+      const btnDescer =
+        document.getElementById("btnDescer");
+
+      const status =
+        document.getElementById("status");
+
+      btnSubir.className = "posicao";
+      btnParar.className = "posicao";
+      btnDescer.className = "posicao";
+
+      if (estadoAtual === "parada") {
+
+        btnSubir.classList.add("disponivel");
+        btnParar.classList.add("ativa");
+        btnDescer.classList.add("disponivel");
+
+        status.textContent = "PARADA";
+        status.className = "status parada";
+
+      }
+
+      if (estadoAtual === "subindo") {
+
+        btnSubir.classList.add("ativa");
+        btnParar.classList.add("disponivel");
+        btnDescer.classList.add("bloqueada");
+
+        status.textContent = "SUBINDO";
+        status.className = "status subindo";
+
+      }
+
+      if (estadoAtual === "descendo") {
+
+        btnSubir.classList.add("bloqueada");
+        btnParar.classList.add("disponivel");
+        btnDescer.classList.add("ativa");
+
+        status.textContent = "DESCENDO";
+        status.className = "status descendo";
+
+      }
+
+    }
+
+    function mostrarTempoRestante() {
+
+      const bloqueio =
+        document.getElementById("bloqueio");
+
+      function atualizar() {
+
+        const restante =
+          intervaloComando -
+          (Date.now() - ultimoComando);
+
+        if (restante <= 0) {
+
+          bloqueio.textContent = "";
+
+          return;
+
+        }
+
+        bloqueio.textContent =
+          "Aguarde " +
+          (restante / 1000).toFixed(1) +
+          " s";
+
+        setTimeout(
+          atualizar,
+          100
+        );
+
+      }
+
+      atualizar();
+
+    }
+
+    atualizarInterface();
+
   </script>
 
 </body>
 </html>
+```
